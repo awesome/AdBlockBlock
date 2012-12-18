@@ -1,0 +1,67 @@
+<!doctype HTML>
+<html>
+<head>
+	<script src="http://code.jquery.com/jquery-latest.min.js"></script>
+</head>
+<body>
+	<h1>Body stuff</h1>
+	<script type="text/javascript"><!--
+		google_ad_client = "pub-0000000000000000";
+		google_alternate_color = "ffffff";
+		google_ad_width = 468;
+		google_ad_height = 60;
+		google_ad_format = "468x60_as";
+		google_ad_type = "text_image";
+		google_ad_channel ="0000000000";
+	//--></script>
+	<script type="text/javascript" src="http://pagead2.googlesyndication.com/pagead/show_ads.js"></script>
+	<div>Below Ad</div>
+
+	<script>
+		function _eval(scriptNode, code) {
+			var docWrite = document.write;
+			var buf = [];
+			document.write = function(s) {
+				buf.push(s);
+			};
+			
+			var newScript = document.createElement('script');
+			newScript.innerText = code;
+			scriptNode.parentNode.replaceChild(newScript, scriptNode);
+			
+			console.log(buf);
+			document.write = docWrite;
+			
+			// Script should be evaluated, any doc writes are in buf.
+			if (buf.length > 0) {
+				var div = document.createElement('div');
+				div.innerHTML = buf.join('');
+			}
+		}
+		
+		function _getScript(scriptNode) {
+			$.post('/', { 
+				Id: btoa(scriptNode.src) 
+			}, function(data) {
+				_eval(scriptNode, data); 
+			});
+		}
+		
+		function _load() {
+			var reScript = /script/i;
+			var reUrls = /googlesyndication/i;
+			for (var i = 0; i < document.body.childNodes.length; ++i) {
+				var node = document.body.childNodes[i];
+				if (node.nodeType == 1) {
+					if (reScript.test(node.nodeName) && reUrls.test(node.src)) {
+						_getScript(node);
+					}
+				}
+			}
+		}
+		
+		_load();
+	</script>
+
+</body>
+</html>
