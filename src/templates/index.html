@@ -1,7 +1,7 @@
 <!doctype HTML>
 <html>
 <head>
-	<script src="http://code.jquery.com/jquery-latest.min.js"></script>
+	<script src="http://code.jquery.com/jquery-latest.js"></script>
 </head>
 <body>
 	<h1>Body stuff</h1>
@@ -18,6 +18,14 @@
 	<div>Below Ad</div>
 
 	<script>
+	
+		function _appendSiblings(node, nodeList) {
+			var parent = node.parentNode;
+			for (var i = 0; i < nodeList.length; ++i) {
+				parent.insertBefore(nodeList[i], node);
+			}
+		}
+		
 		function _eval(scriptNode, code) {
 			var docWrite = document.write;
 			var buf = [];
@@ -26,41 +34,43 @@
 			};
 			
 			var newScript = document.createElement('script');
-			newScript.innerText = code;
-			scriptNode.parentNode.replaceChild(newScript, scriptNode);
-			
-			console.log(buf);
+			newScript.innerHTML = code;
+			console.log(scriptNode.nextSibling);
+			scriptNode.parentNode.insertBefore(newScript, scriptNode.nextSibling);
+
 			document.write = docWrite;
 			
+			var newNodes;
 			// Script should be evaluated, any doc writes are in buf.
 			if (buf.length > 0) {
 				var div = document.createElement('div');
 				div.innerHTML = buf.join('');
+				_load(div.childNodes);
+				_appendSiblings(newScript, div.childNodes);
+			} else {
+				
 			}
+			
 		}
 		
-		function _getScript(scriptNode) {
-			$.post('/', { 
-				Id: btoa(scriptNode.src) 
-			}, function(data) {
-				_eval(scriptNode, data); 
-			});
-		}
-		
-		function _load() {
+		function _load(nodes) {
 			var reScript = /script/i;
 			var reUrls = /googlesyndication/i;
-			for (var i = 0; i < document.body.childNodes.length; ++i) {
+			for (var i = 0; i < nodes.length; ++i) {
 				var node = document.body.childNodes[i];
 				if (node.nodeType == 1) {
 					if (reScript.test(node.nodeName) && reUrls.test(node.src)) {
-						_getScript(node);
+						$.post('/', { 
+							Id: btoa(node.src) 
+						}, function(data) {
+							_eval(node, data); 
+						});
 					}
 				}
 			}
 		}
 		
-		_load();
+		_load(document.body.childNodes);
 	</script>
 
 </body>

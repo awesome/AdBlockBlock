@@ -4,7 +4,6 @@ import (
 	"appengine"
 	"appengine/urlfetch"
 	"encoding/base64"
-	"fmt"
 	"io/ioutil"
 	"net/http"
 	"strings"
@@ -34,20 +33,18 @@ func renderTemplate(w http.ResponseWriter, tmpl string, model interface{}) {
 
 func indexPost(response http.ResponseWriter, request *http.Request) {
 	url64 := request.FormValue("Id")
-	fmt.Println(url64)
 	if decBytes, decErr := base64.StdEncoding.DecodeString(url64); decErr == nil {
 		url := string(decBytes)
-		fmt.Println(url)
 		if strings.HasPrefix(url, "//") {
 			url = "http:" + url
 		}
 
-		fmt.Println(url)
 		ctx := appengine.NewContext(request)
 		client := urlfetch.Client(ctx)
 		if getRes, getErr := client.Get(url); getErr == nil {
 			defer getRes.Body.Close()
 			if data, bodyErr := ioutil.ReadAll(getRes.Body); bodyErr == nil {
+				// If content type is set to text/javascript the browser will execute it immediately.
 				response.Header().Set("content-type", "text/plain")
 				response.Write(data)
 			} else {
