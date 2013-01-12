@@ -6,7 +6,7 @@
 <body>
 	<h1>Body stuff</h1>
 	<script type="text/javascript"><!--
-		google_ad_client = "pub-0000000000000000";
+		google_ad_client = "pub-9491899417486896";
 		google_alternate_color = "ffffff";
 		google_ad_width = 468;
 		google_ad_height = 60;
@@ -18,59 +18,111 @@
 	<div>Below Ad</div>
 
 	<script>
-	
-		function _appendSiblings(node, nodeList) {
-			var parent = node.parentNode;
-			for (var i = 0; i < nodeList.length; ++i) {
-				parent.insertBefore(nodeList[i], node);
+		var _reUrls = /googlesyndication|doubleclick/i;
+		var _postUrl = '/';
+		
+		function _attach(element, event, handler) {
+			if (document.addEventListener) {
+				element.addEventListener(event, handler, false);
+			} else {
+				element.attachEvent('on' + event, handler);
 			}
 		}
-		
-		function _eval(scriptNode, code) {
+
+		function _eval(code) {
 			var docWrite = document.write;
 			var buf = [];
 			document.write = function(s) {
 				buf.push(s);
 			};
 			
-			var newScript = document.createElement('script');
-			newScript.innerHTML = code;
-			console.log(scriptNode.nextSibling);
-			scriptNode.parentNode.insertBefore(newScript, scriptNode.nextSibling);
-
-			document.write = docWrite;
+			eval(code);
 			
-			var newNodes;
-			// Script should be evaluated, any doc writes are in buf.
+			var newNodes = [];
 			if (buf.length > 0) {
 				var div = document.createElement('div');
 				div.innerHTML = buf.join('');
-				_load(div.childNodes);
-				_appendSiblings(newScript, div.childNodes);
-			} else {
-				
+				newNodes.length = div.childNodes.length;
+				for (var i = 0; i < newNodes.length; ++i) {
+					newNodes[i] = div.removeChild(div.childNodes[0]);
+				}
 			}
-			
+
+			document.write = docWrite;
+			return newNodes;
 		}
-		
-		function _load(nodes) {
-			var reScript = /script/i;
-			var reUrls = /googlesyndication/i;
-			for (var i = 0; i < nodes.length; ++i) {
-				var node = document.body.childNodes[i];
-				if (node.nodeType == 1) {
-					if (reScript.test(node.nodeName) && reUrls.test(node.src)) {
-						$.post('/', { 
-							Id: btoa(node.src) 
-						}, function(data) {
-							_eval(node, data); 
-						});
+
+		function _load(node) {
+			if (/iframe/i.test(node.nodeName)) {
+				_loadFrames([node]);
+			} else if (/script/i.test(node.nodeName)) {
+				_loadScripts([node]);
+			} else {
+				_loadScripts(node.getElementsByTagName('script'));
+				_loadFrames(node.getElementsByTagName('iframe'));
+			}
+		}
+
+		function _loadFrames(nodeList) {				
+			for (var i = 0; i < nodeList.length; ++i) {
+				(function(iframe) {
+					if (iframe.src.length > 0) {
+						if (_reUrls.test(iframe.src)) {
+							$.post(_postUrl, { 
+									Id: btoa(iframe.src) 
+								}, function(data) {
+									var newFrame = document.createElement('iframe');
+									iframe.parentNode.replaceChild(newFrame, iframe);
+
+									_attach(newFrame, 'load', function() {
+										var iDoc = newFrame.contentDocument || newFrame.contentWindow.document;
+										_load(iDoc);
+									});
+
+									var iDoc = newFrame.contentDocument || newFrame.contentWindow.document;
+									iDoc.open();
+									iDoc.writeln(data);
+									iDoc.close();
+								});
+						}
+					} else {
+						var hnd = setInterval(function() {
+							var iDoc = iframe.contentDocument || iframe.contentWindow.document;
+							// if iDoc is still null, it's not available.
+							if (iDoc) {
+								clearInterval(hnd);
+								_load(iDoc);
+							}
+						}, 250);
 					}
+				})(nodeList[i]);
+			}
+		}
+
+		function _loadScripts(nodeList) {
+			for (var i = 0; i < nodeList.length; ++i) {
+				if (_reUrls.test(nodeList[i].src)) {
+					(function(node) {
+						$.post(_postUrl, { 
+								Id: btoa(node.src) 
+							}, function(data) {
+								var newNodes = _eval(data); 
+								var prevNode = node;
+								for (var j = 0; j < newNodes.length; ++j) {
+									var curNode = newNodes[j];
+									_load(curNode);
+									node.parentNode.insertBefore(curNode, prevNode.nextSibling);
+									prevNode = curNode;
+								}
+							});
+					})(nodeList[i]);
 				}
 			}
 		}
 		
-		_load(document.body.childNodes);
+		$(document).ready(function() { 
+			_load(document);
+		});
 	</script>
 
 </body>
